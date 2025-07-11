@@ -1,0 +1,28 @@
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Ignore virtual environment folder
+.venv/
+env/
+ENV/
+venv/
+
+# Ignore VSCode settings
+.vscode/
+
+# Bytecode and logs
+*.log
+*.sqlite3
+*.db
+
+# MacOS system files
+.DS_Store
+
+# Ignore test artifacts
+*.coverage
+.coverage.*
+htmlcov/
+.cache/
+pytest_cache/
