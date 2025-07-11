@@ -11,25 +11,32 @@ router = APIRouter()
 async def create_todo(todo: TodoCreate):
     todo_dict = todo.model_dump()
     todo_dict["created_at"] = datetime.now(timezone.utc)
-    result = await db.todos.insert_one(todo_dict)
-    todo_dict["id"]=str(result.inserted_id)
-    return normalize_todo(todo_dict)
+    try: 
+        result = await db.todos.insert_one(todo_dict)
+        todo_dict["id"]=str(result.inserted_id)
+        return normalize_todo(todo_dict)
+    except Exception:
+        raise HTTPException(status_code=500,detail="Database error while creating new entry")
 
 @router.get("/",response_model=List[TodoResponse])
 async def get_all_todos():
-    todos = []
-    async for todo in db.todos.find():
-        todo["id"]=str(todo["_id"])
-        todos.append(normalize_todo(todo))
-    return todos
+    try:
+        todos = []
+        async for todo in db.todos.find():
+            todo["id"]=str(todo["_id"])
+            todos.append(normalize_todo(todo))
+        return todos
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to fetch todos from Database")
 
 @router.get("/{todo_id}",response_model=TodoResponse)
 async def get_todo_by_id(todo_id: str):
     if not ObjectId.is_valid(todo_id):
         raise HTTPException(status_code=400, detail="invalid ID Format")
-    
-    todo = await db.todos.find_one({"_id":ObjectId(todo_id)})
-    
+    try:
+        todo = await db.todos.find_one({"_id":ObjectId(todo_id)})
+    except Exception:
+        raise HTTPException(status_code=500, detail="Database error while retrieving the data")    
     if not todo:
         raise HTTPException(status_code=404, detail="Todo Not Found")
     
@@ -40,12 +47,14 @@ async def get_todo_by_id(todo_id: str):
 async def update_todo_by_id(todo_id:str, updated_todo: TodoCreate=Body(...)):
     if not ObjectId.is_valid(todo_id):
         raise HTTPException(status_code=400, detail="invalid ID Format")
-    
-    result = await db.todos.find_one_and_update(
-        {"_id":ObjectId(todo_id)},
-        {"$set":updated_todo.model_dump(),"updated_at":datetime.now(timezone.utc)},
-        return_document=True
-    )
+    try:
+        result = await db.todos.find_one_and_update(
+            {"_id":ObjectId(todo_id)},
+            {"$set":updated_todo.model_dump(),"updated_at":datetime.now(timezone.utc)},
+            return_document=True
+        )
+    except Exception:
+        raise HTTPException(status_code=500, detail="Database error while updating in the todo")
     if not result:
         raise HTTPException(status_code=404, detail="Todo Not Found")
     
@@ -57,9 +66,11 @@ async def update_todo_by_id(todo_id:str, updated_todo: TodoCreate=Body(...)):
 async def delete_todo(todo_id:str):
     if not ObjectId.is_valid(todo_id):
         raise HTTPException(status_code=400, detail="invalid ID Format")
-    
-    result = await db.todos.delete_one(
-        {"_id":ObjectId(todo_id)})
+    try:
+        result = await db.todos.delete_one(
+            {"_id":ObjectId(todo_id)})
+    except Exception:
+        raise HTTPException(status_code=500, detail="Database error while deleting the record in the DB")
     
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Todo Not Found")
